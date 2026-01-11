@@ -1,12 +1,23 @@
-env/
-venv/
-*.venv/
+# Environment variables
+.env
 
+
+# Python
 __pycache__/
 *.pyc
 
+
+# Databases
 *.sqlite3
 
+
+# Editor config
 .vscode/
 
+
+# Virtual environments
 .ecomm_env
+
+
+# HTTP test files
+*.http

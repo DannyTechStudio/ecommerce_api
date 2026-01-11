@@ -6,3 +6,4 @@ mysqlclient==2.2.7
 pycountry==24.6.1
 sqlparse==0.5.4
 tzdata==2025.2
+python-dotenv==1.2.1
