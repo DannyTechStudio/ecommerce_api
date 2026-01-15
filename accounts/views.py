@@ -83,3 +83,10 @@ class AddressViewSet(viewsets.ModelViewSet):
             Address.objects.filter(user=self.request.user, is_default=True).exclude(pk=serializer.instance.pk).update(is_default=False)
             
         serializer.save()
+        
+    # @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        return Response({
+            "message": "Address deleted successfully",
+        }, status=status.HTTP_200_OK)
