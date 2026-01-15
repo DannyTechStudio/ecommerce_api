@@ -1,6 +1,10 @@
 import uuid
+from django.conf import settings
+from django.db.models import Q
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from phonenumber_field.modelfields import PhoneNumberField
+
 
 # Create your models here.
 class UserManager(BaseUserManager):
@@ -39,3 +43,31 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.full_name
+    
+
+class Address(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='addresses')
+    full_name = models.CharField(max_length=150)
+    phone = PhoneNumberField(null=False, blank=False)
+    country = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    city = models.CharField(max_length=100)
+    street_address = models.TextField(null=False, blank=False)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ["-is_default", "-created_at"]
+        indexes = [
+            models.Index(fields=["user"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=Q(is_default=True),
+                name="One_user_one_default_address"
+            )
+        ]
+    
+    def __str__(self):
+        return f"{self.full_name} - {self.city}, {self.country}"

@@ -4,6 +4,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .models import Address
+
 User = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -40,3 +42,37 @@ class RegisterSerializer(serializers.ModelSerializer):
  
 class LoginSerializer(TokenObtainPairSerializer):
     username_field = 'email'
+    
+
+class AddressWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        exclude = ['user', 'created_at']
+        
+    def validate(self, attributes):
+        """
+        Ensure only one default address per user
+        """
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        is_default = attributes.get("is_default", False)
+
+        if is_default and user:
+            queryset = Address.objects.filter(user=user, is_default=True)
+
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+
+            if queryset.exists():
+                raise serializers.ValidationError(
+                    {"is_default": "You already have a default address."}
+                )
+
+        return attributes
+    
+
+class AddressReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['id', 'full_name', 'phone', 'street_address', 'city', 'state', 'country', 'is_default', 'created_at']
