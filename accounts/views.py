@@ -84,7 +84,6 @@ class AddressViewSet(viewsets.ModelViewSet):
             
         serializer.save()
         
-    # @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
         return Response({

@@ -46,6 +46,7 @@ class User(AbstractUser):
     
 
 class Address(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='addresses')
     full_name = models.CharField(max_length=150)
     phone = PhoneNumberField(null=False, blank=False)
