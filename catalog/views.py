@@ -1,15 +1,19 @@
 from rest_framework import viewsets, permissions, status
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
-from .models import Category, Product
+from .models import Category, Product, ProductImage
 from .serializers import (
     CategoryReadSerializer, 
     CategoryWriteSerializer,
     ProductReadSerializer,
-    ProductWriteSerializer
+    ProductWriteSerializer,
+    ProductImageReadSerializer,
+    ProductImageWriteSerializer
 )
 
 
 # Create your views here.
+# Category ViewSet
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     
@@ -29,7 +33,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
             "message": "Category created successfully",
             "data": response.data
         }
-        
         return response
         
     def update(self, request, *args, **kwargs):
@@ -38,7 +41,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
             "message": "Category updated successfully",
             "data": response.data
         }
-        
         return response
     
     def destory(self, request, *args, **kwargs):
@@ -47,10 +49,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
         
         return Response({
             "message": "Category deleted successfully"
-        }, status=status.HTTP_204_NO_CONTENT)
+        }, status=status.HTTP_200_OK)
         
         
-
+# Product ViewSet
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     
@@ -70,7 +72,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             "message": "Product added successfully",
             "data": response.data
         }
-        
         return response
     
     def update(self, request, *args, **kwargs):
@@ -79,7 +80,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             "message": "Product updated successfully",
             "data": response.data
         }
-        
         return response
     
     def destroy(self, request, *args, **kwargs):
@@ -89,3 +89,53 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response ({
             "message": "Product removed successfully"
         }, status=status.HTTP_204_NO_CONTENT)
+        
+
+class ProductImageViewSet(viewsets.ModelViewSet):
+    
+    def get_queryset(self):
+        return ProductImage.objects.select_related('product').filter(product_id=self.kwargs['product_pk'])
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['product'] = get_object_or_404(
+            Product, pk=self.kwargs['product_pk']
+        )
+        return context
+    
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return ProductImageReadSerializer
+        return ProductImageWriteSerializer
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+    
+    def perform_create(self, serializer):
+        serializer.save(product=self.get_serializer_context()['product'])
+    
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        response.data = {
+            "message": "Product image added successfully",
+            "data": response.data
+        }
+        return response
+    
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        response.data = {
+            "message": "Image updated successfully",
+            "data": response.data
+        }
+        return response
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        
+        return Response({
+            "message": "Image removed successfully."
+        }, status=status.HTTP_200_OK)

@@ -1,7 +1,10 @@
+import hashlib
+# from itertools import product
 from rest_framework import serializers
-from .models import Category, Product
+from .models import Category, Product, ProductImage
 
 
+# Category Serializer
 class CategoryReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -20,6 +23,7 @@ class CategoryWriteSerializer(serializers.ModelSerializer):
         return slug.lower().strip()
     
 
+# Product Serializer
 class ProductReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
@@ -65,3 +69,81 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You cannot assign a product to an inactive category")
         
         return category
+    
+    
+# ProductImage Serializer
+class ProductImageReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'product', 'image', 'is_primary', 'created_at']
+        read_only_fields = ['created_at']
+        
+
+class ProductImageWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'is_primary', 'created_at']
+        read_only_fields = ['created_at']
+        
+    def validate(self, attrs):
+        instance = self.instance
+        product = self.context['product']
+        image = attrs.get('image')
+        is_primary = attrs.get('is_primary')
+        
+        # checking product activeness
+        if not product.is_active:
+            raise serializers.ValidationError('This product is inactive.')
+        
+        # prevent product change on update
+        if instance and instance.product != product:
+            raise serializers.ValidationError('You cannot change the product of an existing image.') 
+        
+        # enforce max image upload on create
+        if not instance:
+            number_of_images = ProductImage.objects.filter(product=product).count()
+            if number_of_images > 5:
+                raise serializers.ValidationError('A product cannot have more than 5 images.')
+        
+        # image validations when provided
+        if image:
+            content_type = getattr(image, "content_type", None)
+            
+            # MIME type ckeck
+            valid_mime_types = ['image/jpeg', 'image/png', 'image/webp']
+            if content_type not in valid_mime_types:
+                raise serializers.ValidationError('Unsupported image type. JPEG, PNG and WebP are anly allowed.')
+            
+            # Image size check(2MB)
+            if image.size > 2 * 1024 * 1024:
+                raise serializers.ValidationError('Image must not exceed 2MB')
+            
+            # Duplicate image check (content-based)
+            incoming_image_hash = hashlib.sha256()
+            for chunk in image.chunks():
+                incoming_image_hash.update(chunk)
+            incoming_image_digest = incoming_image_hash.hexdigest()
+            
+            qs = ProductImage.objects.filter(product=product)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+                
+            for img in qs:
+                existing_image_hash = hashlib.sha256()
+                
+                for chunk in img.image.chunks():
+                    existing_image_hash.update(chunk)
+                existing_image_digest = existing_image_hash.hexdigest()
+                
+                if incoming_image_digest == existing_image_digest:
+                    raise serializers.ValidationError('This product already exist for this product.')
+            
+        # primary image reassignment
+        if is_primary:
+            qs = ProductImage.objects.filter(product=product, is_primary=True)
+            
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+            qs.update(is_primary=False)
+            
+        return attrs

@@ -1,5 +1,5 @@
 import uuid
-from django.db import models
+from django.db import models, transaction
 
 
 # Create your models here.
@@ -19,7 +19,7 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
-
+# Product Model
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200, blank=False, null=False)
@@ -34,4 +34,41 @@ class Product(models.Model):
     
     def __str__(self):
         return self.name
+    
+
+# Product Image Model
+class ProductImage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    
+    def product_image_path(instance, filename):
+        return f'products/{instance.product.id}/{filename}'
+    
+    image = models.ImageField(upload_to=product_image_path, blank=False, null=False)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['product'], condition=models.Q(is_primary=True), name='unique_primary_image_per_product')
+        ]
+
+    def delete(self, *args, **kwargs):
+        previous_primary_image = self.is_primary
+        product = self.product
+        
+        with transaction.atomic():
+            super().delete(*args, **kwargs)
+            
+            if previous_primary_image:
+                next_primary_image = ProductImage.objects.filter(product=product).order_by('created_at').first()
+                
+                if next_primary_image:
+                    next_primary_image.is_primary = True
+                    next_primary_image.save(update_fields=['is_primary'])
+
+    def __str__(self):
+        return f"Image for {self.product.name}"
+
 

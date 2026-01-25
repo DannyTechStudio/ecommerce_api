@@ -21,3 +21,6 @@ __pycache__/
 
 # HTTP test files
 *.http
+
+# product image folder
+product_images
