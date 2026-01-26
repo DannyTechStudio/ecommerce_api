@@ -94,7 +94,12 @@ class ProductViewSet(viewsets.ModelViewSet):
 class ProductImageViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
-        return ProductImage.objects.select_related('product').filter(product_id=self.kwargs['product_pk'])
+        return (
+            ProductImage.objects
+            .select_related('product')
+            .filter(product_id=self.kwargs['product_pk'])
+            .order_by('-created_at')
+        )
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -114,7 +119,12 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         return [permissions.IsAdminUser()]
     
     def perform_create(self, serializer):
-        serializer.save(product=self.get_serializer_context()['product'])
+        image_instance = serializer.save(product=self.get_serializer_context()['product'])
+        
+        if getattr(image_instance, 'is_primary', False):
+            ProductImage.objects.filter(
+                product=image_instance.product, is_primary=True
+            ).exclude(pk=image_instance.pk).update(is_primary=False)
     
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
@@ -124,6 +134,14 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         }
         return response
     
+    def perform_update(self, serializer):
+        image_instance = serializer.save()
+
+        if getattr(image_instance, 'is_primary', False):
+            ProductImage.objects.filter(
+                product=image_instance.product, is_primary=True
+            ).exclude(pk=image_instance.pk).update(is_primary=False)
+        
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         response.data = {
