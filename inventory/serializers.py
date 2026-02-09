@@ -1,10 +1,13 @@
 from django.db import transaction
+from django.utils import timezone
+from django.conf import settings
 from rest_framework import serializers
 from .models import InventoryItem, InventoryReservation, InventoryMovement
-from django.utils import timezone
 
 
-# Serializers
+#------------------------------------
+# Inventory Item Serializer
+#------------------------------------
 class InventoryItemSerializer(serializers.ModelSerializer):
     available_quantity = serializers.SerializerMethodField()
     
@@ -42,6 +45,7 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             
         instance.quantity_on_hand = new_stock_quantity
         instance.save()
+        
         return instance
 
 
@@ -64,6 +68,9 @@ class InventoryReservationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         inventory_item = attrs.get("inventory_item")
         quantity = attrs.get("quantity")
+        
+        if not inventory_item:
+            raise serializers.ValidationError("Inventory item is required")
 
         if quantity > inventory_item.available_quantity():
             raise serializers.ValidationError("Insufficient stock available for reservation")
@@ -71,7 +78,11 @@ class InventoryReservationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        request = self.context["request"]
+        request = self.context.get("request")
+        
+        if not request or not request.user.is_aunthenticated:
+            raise serializers.ValidationError("Authentication required")
+        
         inventory_item = validated_data["inventory_item"]
         quantity = validated_data["quantity"]
         
@@ -84,7 +95,6 @@ class InventoryReservationSerializer(serializers.ModelSerializer):
             
             if quantity > inventory_item.available_quantity():
                 raise serializers.ValidationError("Insufficient stock available for reservation.")
-            
             inventory_item.reserve_stock(quantity)
             
             reservation = InventoryReservation.objects.create(
