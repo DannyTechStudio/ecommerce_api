@@ -30,12 +30,12 @@ class InventoryReservationAdmin(admin.ModelAdmin):
         "quantity",
         "is_active",
         "created_at",
-        "expires-at",
+        "expires_at",
     )
     
     list_filter = ("is_active", "created_at", "expires_at")
-    search_fields = ("customer__email")
-    readonly_fields = ("created_at")
+    search_fields = ("customer__email",)
+    readonly_fields = ("created_at",)
     
     
 @admin.register(InventoryMovement)
@@ -50,4 +50,4 @@ class InventoryMovementAdmin(admin.ModelAdmin):
     )
     
     list_filter = ("movement_type", "created_at")
-    readonly_fields = ("created_at")
+    readonly_fields = ("created_at",)
