@@ -1,7 +1,6 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from catalog.models import Product
@@ -10,6 +9,7 @@ from inventory.models import InventoryReservation
 User = settings.AUTH_USER_MODEL
 
 
+# Cart Status Enum
 class CartStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Active"
     CHECKED_OUT = "CHECKED_OUT", "Checked_out"
@@ -25,7 +25,10 @@ class Cart(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    
+    def __str__(self):
+        return f"Cart: {self.id} Owner: {self.user} Status: {self.status}" 
+
+
     # Checking for the usability of a cart
     def is_active(self) -> bool:
         if self.status == CartStatus.ACTIVE:
@@ -36,7 +39,7 @@ class Cart(models.Model):
         
         return timezone.now() < self.expires_at
     
-    
+
     # Extends cart expiration duration
     def extend_expiration(self, ttl_minutes: int) -> None:
         if self.status != CartStatus.ACTIVE:
@@ -64,8 +67,4 @@ class Cart(models.Model):
         
         self.status = CartStatus.EXPIRED
         self.expires_at = None
-    
-    
-    
-    
-        
+
