@@ -111,19 +111,20 @@ class InventoryReservation(models.Model):
         return reservation
 
 
+# Movement types enum
+class MovementTypes(models.TextChoices):
+    RESERVE = "RESERVE", "Reserve"
+    RELEASE = "RELEASE", "Release"
+    SALE = "SALE", "Sale"
+    RESTOCK = "RESTOCK", "Restock"
+
+
 # InventoryMovement model: logs stock movements and changes
 class InventoryMovement(models.Model):
-    MOVEMENT_TYPES = [
-        ("RESERVE", "Reserve"),
-        ("RELEASE", "Release"),
-        ("SALE", "Sale"),
-        ("RESTOCK", "Restock"),
-    ]
-    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     inventory_item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, related_name='movements')
     quantity = models.PositiveIntegerField()
-    movement_type = models.CharField(max_length=10, choices=MOVEMENT_TYPES)
+    movement_type = models.CharField(max_length=10, choices=MovementTypes.choices)
     reference = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     

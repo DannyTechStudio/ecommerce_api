@@ -1,6 +1,5 @@
 from django.db import transaction
 from django.utils import timezone
-from datetime import datetime, timedelta
 from .models import InventoryItem, InventoryReservation
 
 
