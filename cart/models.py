@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
 
 from catalog.models import Product
 from inventory.models import InventoryReservation
@@ -24,6 +25,19 @@ class Cart(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(status=CartStatus.ACTIVE),
+                name="one_active_cart_per_user"
+            )  
+        ],
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["expires_at"]),
+        ]
     
     def __str__(self):
         return f"Cart: {self.id} Owner: {self.user} Status: {self.status}" 
@@ -77,6 +91,18 @@ class CartItem(models.Model):
     reservation = models.ForeignKey(InventoryReservation, on_delete=models.PROTECT, related_name="cart_items")
     price_snapshot = models.DecimalField(max_digits=12, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cart", "product"],
+                name="unique_product_per_cart"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0),
+                name="quantity_must_be_positive"
+            )
+        ]
     
     def __str__(self):
         return f"Item: {self.id} Cart: {self.cart} Product: {self.product} Reservation: {self.reservation}"
