@@ -66,7 +66,7 @@ def validate_cart_item_exists(item):
     
 
 # Ensuring cart item has a valid inventory reservation
-def validate_reservation(reservation):
+def validate_reservation_exists(reservation):
     if reservation is None:
         raise CartValidationError("Cart item has no inventory reservation")
     
