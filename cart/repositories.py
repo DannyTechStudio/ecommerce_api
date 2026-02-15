@@ -38,19 +38,33 @@ class CartRepository:
         
 
 class CartItemRepository:
-    def find_item(self, cart, product):
+    @staticmethod
+    def find_item(cart, product):
         return (CartItem.objects.filter(cart=cart, product=product).first())
-        
     
-    def add_item(self, cart_item):
+    @staticmethod
+    def create_item(cart, product, quantity, price_snapshot, reservation):
+        cart_item = CartItem(
+            cart=cart,
+            product=product,
+            quantity=quantity,
+            price_snapshot=price_snapshot,
+            reservation=reservation
+        )
+        cart_item.save()
+        return cart_item
+    
+        
+    @staticmethod
+    def add_item(cart_item):
         cart_item.save()
         
         return cart_item
     
-    
-    def delete_item(self, cart_item):
+    @staticmethod
+    def delete_item(cart_item):
         cart_item.delete()
         
-    
-    def list_items(self, cart):
-        return Cart.objects.filter(cart=cart)
+    @staticmethod
+    def get_item_by_cart(cart):
+        return CartItem.objects.filter(cart=cart)
