@@ -4,9 +4,14 @@ from rest_framework import status
 
 from .serializers import (
     CartSerializer,
+    CartItemSerializer,
     AddToCartSerializer,
-    UpdateCartItemSerializer,
-    RemoveCartItemSerializer
+)
+
+from .exceptions import (
+    CartItemNotFoundError,
+    InvalidQuantityError,
+    CartNotActiveError
 )
 
 from .services import CartService
@@ -59,58 +64,69 @@ class AddToCartView(APIView):
             )
 
 
-class UpdateCartItemView(APIView):
+class CartItemDetailView(APIView):
     """
-        PATCH -> Update quantity of an item 
+        Handles operations on a single cart item.
+        PATCH → update quantity
+        DELETE → remove item from cart
     """
-    def patch(self, request):
-        serializer = UpdateCartItemSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
+    def patch(self, request, item_id):
         try:
-            CartService.update_item_quantity(
-                user=request.user,
-                product_id=serializer.validated_data["product_id"],
-                new_quantity=serializer.validated_data["quantity"]
+            user = request.user
+            quantity = request.data.get("quantity")
+            
+            if quantity is None:
+                return Response(
+                    {"error": "Quantity is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            updated_item = CartService.update_item_quantity(
+                user=user,
+                item_id=item_id,
+                quantity=int(quantity)
             )
             
-            return Response(
-                {"message": "Cart item updated"},
-                status=status.HTTP_200_OK
-            )
-            
-        except CartError as e:
-            return Response(
-                {"error": type(e).__name__, "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-            
-class RemoveCartItemView(APIView):
-    """
-        DELETE -> Remove item from cart 
-    """
-    def delete(self, request):
-        serializer = RemoveCartItemSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+            serializer = CartItemSerializer(updated_item)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         
-        try: 
+        except InvalidQuantityError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except CartItemNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except CartNotActiveError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            return Response(
+                {"error": "Unable tp update cart item"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    def delete(self, request, item_id):
+        try:
+            user = request.user
+            
             CartService.remove_item_from_cart(
-                user=request.user,
-                product_id=serializer.validated_data["product_id"]
+                user=user,
+                item_id=item_id
             )
             
-            return Response(
-                {"message": "Item removed from cart"},
-                status=status.HTTP_204_NO_CONTENT
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
         
-        except CartError as e:
+        except CartItemNotFoundError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except CartNotActiveError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
             return Response(
-                {"error": type(e).__name__, "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Unable to remove cart item"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            
+
             
 class CheckoutCartView(APIView):
     """
