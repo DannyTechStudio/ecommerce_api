@@ -64,7 +64,7 @@ class UpdateCartItemView(APIView):
         PATCH -> Update quantity of an item 
     """
     def patch(self, request):
-        serializer = UpdateCartItemSerializer(data=request)
+        serializer = UpdateCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
