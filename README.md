@@ -54,8 +54,7 @@ Wishlist        Customer saved items                        Customer manages
 
 
 ## Entity Relationship Diagram
-[Entity Relationship Diagram](../../Documents/RetailPrime_ERD_main.drawio.png)
-
+<img width="1539" height="1359" alt="RetailPrime_ERD_main drawio" src="https://github.com/user-attachments/assets/6529fecc-0d5a-42fe-9cce-6e9e2c6d55bc" />
 
 ## Functional Requirements
 # Authentication & Authorization:
