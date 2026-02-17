@@ -33,7 +33,7 @@ class Cart(models.Model):
                 condition=models.Q(status=CartStatus.ACTIVE),
                 name="one_active_cart_per_user"
             )  
-        ],
+        ]
         indexes = [
             models.Index(fields=["user", "status"]),
             models.Index(fields=["expires_at"]),
