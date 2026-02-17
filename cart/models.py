@@ -99,7 +99,7 @@ class CartItem(models.Model):
                 name="unique_product_per_cart"
             ),
             models.CheckConstraint(
-                condition=models.Q(quantity__gt=0),
+                check=models.Q(quantity__gt=0),
                 name="quantity_must_be_positive"
             )
         ]
