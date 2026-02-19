@@ -54,7 +54,11 @@ class CartService:
         cart = CartService.get_or_create_active_cart(user)
         validate_cart_is_active(cart)
         
-        product = Product.objects.filter(id=product_id)
+        product = Product.objects.filter(id=product_id).first()
+        
+        if not product:
+            raise ValueError("Product not found")
+        
         existing_item = CartItemRepository.find_item(cart=cart, product=product)
         
         if existing_item:
