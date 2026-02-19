@@ -13,7 +13,7 @@ class CartRepository:
 
 
     @staticmethod
-    def create_cart(user, ttl_minutes):
+    def create_cart(user, ttl_minutes=60):
         expires_at = timezone.now() + timezone.timedelta(minutes=ttl_minutes)
         
         cart = Cart(user=user, expires_at=expires_at)
