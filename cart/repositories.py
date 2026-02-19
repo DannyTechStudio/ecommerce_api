@@ -7,9 +7,7 @@ from .models import Cart, CartItem, CartStatus
 class CartRepository:
     @staticmethod
     def find_active_cart_by_user(user):
-        return (
-            Cart.objects.filter(user=user, status=CartStatus.ACTIVE).first()
-        )
+        return Cart.objects.filter(user=user, is_active=True).first()
 
 
     @staticmethod

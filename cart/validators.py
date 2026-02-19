@@ -12,7 +12,7 @@ class CartValidationError(ValueError):
 """
 # Ensuring cart is usable for operations
 def validate_cart_is_active(cart):
-    if cart.stauts != CartStatus.ACTIVE:
+    if cart.status != CartStatus.ACTIVE:
         raise CartValidationError("Cart is not active")
     
     if cart.expires_at is None:
