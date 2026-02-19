@@ -5,13 +5,15 @@ from .models import Cart, CartItem, CartStatus
 
 
 class CartRepository:
-    def find_active_cart_by_user(self, user):
+    @staticmethod
+    def find_active_cart_by_user(user):
         return (
             Cart.objects.filter(user=user, status=CartStatus.ACTIVE).first()
         )
 
 
-    def create_cart(self, user, ttl_minutes):
+    @staticmethod
+    def create_cart(user, ttl_minutes):
         expires_at = timezone.now() + timezone.timedelta(minutes=ttl_minutes)
         
         cart = Cart(user=user, expires_at=expires_at)
@@ -24,13 +26,15 @@ class CartRepository:
         return cart
     
     
-    def save(self, cart):
+    @staticmethod
+    def save(cart):
         cart.save()
         
         return cart
     
     
-    def find_expired_cart(self, now=None):
+    @staticmethod
+    def find_expired_cart(now=None):
         if now is None:
             now = timezone.now()
             
