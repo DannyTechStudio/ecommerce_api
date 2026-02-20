@@ -25,7 +25,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     username = None
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4(), editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=50, blank=False, null=False)
     last_name = models.CharField(max_length=50, blank=False, null=False)
     email = models.EmailField(unique=True, blank=False, null=False)
