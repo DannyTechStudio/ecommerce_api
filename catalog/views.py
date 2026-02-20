@@ -11,9 +11,7 @@ from .serializers import (
     ProductImageWriteSerializer
 )
 
-from rest_framework import generics, filters
-from django_filters.rest_framework import DjangoFilterBackend
-
+from rest_framework import generics
 
 
 #--------------- Create your views here.
@@ -99,9 +97,6 @@ class ProductListView(generics.ListAPIView):
     queryset = Product.objects.filter(is_active=True)
     serializer_class = ProductReadSerializer
     
-    # Enables search and filter together
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    
     # filtering
     filterset_fields = ["category"]
     
@@ -110,7 +105,7 @@ class ProductListView(generics.ListAPIView):
     
     # ordering
     ordering_fields = ["price", "created_at", "name"]
-    ordering = ["-created"]     
+    ordering = ["-created_at"]     
 
 class ProductImageViewSet(viewsets.ModelViewSet):
     
