@@ -11,6 +11,10 @@ from .serializers import (
     ProductImageWriteSerializer
 )
 
+from rest_framework import generics, filters
+from django_filters.rest_framework import DjangoFilterBackend
+
+
 
 #--------------- Create your views here.
 # Category ViewSet
@@ -89,7 +93,24 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response ({
             "message": "Product removed successfully"
         }, status=status.HTTP_204_NO_CONTENT)
-        
+
+
+class ProductListView(generics.ListAPIView):
+    queryset = Product.objects.filter(is_active=True)
+    serializer_class = ProductReadSerializer
+    
+    # Enables search and filter together
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    
+    # filtering
+    filterset_fields = ["category"]
+    
+    # searching
+    search_fields = ["name", "description", "category__name"]
+    
+    # ordering
+    ordering_fields = ["price", "created_at", "name"]
+    ordering = ["-created"]     
 
 class ProductImageViewSet(viewsets.ModelViewSet):
     
