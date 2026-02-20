@@ -12,7 +12,7 @@ from .serializers import (
 )
 
 
-# Create your views here.
+#--------------- Create your views here.
 # Category ViewSet
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

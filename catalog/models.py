@@ -5,8 +5,8 @@ from django.db import models, transaction
 # Create your models here.
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200, unique=True, blank=False, null=False)
-    slug = models.SlugField(max_length=150, unique=True, blank=False, null=False)
+    name = models.CharField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=150, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -22,19 +22,25 @@ class Category(models.Model):
 # Product Model
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200, blank=False, null=False)
-    slug = models.CharField(max_length=150, unique=True, blank=True, null=True)
+    name = models.CharField(max_length=200)
+    slug = models.CharField(max_length=150, unique=True)
     description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    quantity = models.PositiveIntegerField()
     brand = models.CharField(max_length=150, blank=True, null=True)
-    price = models.DecimalField(max_digits=14, decimal_places=2, blank=False, null=True)
+    price = models.DecimalField(max_digits=14, decimal_places=2)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Ensures 'is_active' is 'False' when quantity is zero
+    def save(self, *args, **kwargs):
+        self.is_active = self.quantity > 0
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return self.name
-    
+
 
 # Product Image Model
 class ProductImage(models.Model):
@@ -44,7 +50,7 @@ class ProductImage(models.Model):
     def product_image_path(instance, filename):
         return f'products/{instance.product.id}/{filename}'
     
-    image = models.ImageField(upload_to=product_image_path, blank=False, null=False)
+    image = models.ImageField(upload_to=product_image_path)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     

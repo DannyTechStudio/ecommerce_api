@@ -27,14 +27,14 @@ class CategoryWriteSerializer(serializers.ModelSerializer):
 class ProductReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id', 'name', 'slug', 'description', 'category', 'brand', 'price', 'is_active', 'created_at']
+        fields = ['id', 'name', 'slug', 'description', 'category', 'quantity', 'brand', 'price', 'is_active', 'created_at']
       
   
 class ProductWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id', 'name', 'slug', 'description', 'category', 'brand', 'price', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ['id', 'name', 'slug', 'description', 'category', 'brand', 'price', 'quantity', 'created_at', 'updated_at']
+        read_only_fields = ['is_active', 'created_at', 'updated_at']
     
     def validate_name(self, name):
         name = name.strip()
@@ -42,6 +42,12 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Product must be at least 3 characters long.")
         
         return name
+    
+    def validate_quantity(self, quantity):
+        if quantity <= 0:
+            raise serializers.ValidationError("Quantity must not be zero or less")
+        
+        return quantity
     
     
     def validate_slug(self, slug):
