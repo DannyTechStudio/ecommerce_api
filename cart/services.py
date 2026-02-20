@@ -75,7 +75,7 @@ class CartService:
         
         else:  
             reservation = create_reservation(
-                inventory_item=product.inventory_item,
+                inventory_item=product.inventory_items.first(),
                 quantity=quantity,
                 reference=f"cart: {cart.id}"
             )
