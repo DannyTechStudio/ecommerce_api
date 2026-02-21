@@ -1,11 +1,17 @@
 from django.db import transaction
 from django.utils import timezone
+from django.contrib.auth.models import AnonymousUser
 
 from catalog.models import Product
 from .models import Cart, CartItem
 
 
 class CartService:
+    @staticmethod
+    def _ensure_authenticated(user):
+        if isinstance(user, AnonymousUser):
+            raise ValueError("Signup required")
+    
     @staticmethod
     def get_active_cart(user):
         """
@@ -30,6 +36,8 @@ class CartService:
     def add_to_cart(user, product_id, quantity):
         product = Product.objects.filter(id=product_id, is_active=True).first()
         
+        price = product.price
+        
         if not product:
             raise ValueError("Product not found or inactive.")
         
@@ -41,7 +49,10 @@ class CartService:
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
-            defaults={'quantity': quantity}
+            defaults={
+                'quantity': quantity,
+                "price_snapshot": price
+            }
         )
         
         if not created:

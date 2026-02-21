@@ -37,12 +37,12 @@ class Cart(models.Model):
         
     def save(self, *args, **kwargs):
         if not self.expires_at:
-            self.expires_at = timedelta.now + self.TTL
+            self.expires_at = timezone.now() + self.TTL
         super().save(*args, **kwargs)
         
     def extend_ttl(self):
         """ Extends cart expiration when the user interacts meaningfully """
-        self.expires_at = max(self.expires_at, timedelta.now() + self.EXTENSION)
+        self.expires_at = max(self.expires_at, timezone.now() + self.EXTENSION)
         self.save()
     
     def __str__(self):
