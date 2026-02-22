@@ -77,7 +77,7 @@ class RemoveCartItemView(APIView):
         
         cart = item.cart
         item.delete()
-        cart.extend_ttl
+        cart.extend_ttl()
         
         return Response(
             status=status.HTTP_204_NO_CONTENT

@@ -7,10 +7,16 @@ from .models import Cart, CartItem
 
 
 class CartService:
+    # Cart TTL and extension in hours
+    TTL_HOURS = 22
+    EXTENSION_HOURS = 15
+    
+    
     @staticmethod
     def _ensure_authenticated(user):
         if isinstance(user, AnonymousUser):
             raise ValueError("Signup required")
+    
     
     @staticmethod
     def get_active_cart(user):
@@ -20,32 +26,48 @@ class CartService:
         cart = Cart.objects.filter(user=user, status='ACTIVE').first()
         now = timezone.now()
         
-        if cart:
-            if cart.expires_at < now:
-                cart.expires_at = 'EXPIRED'
-                cart.save()
-                cart = None
-                
+        # Expire cart if past TTL
+        if cart and cart.expires_at < now:
+            cart.expires_at = 'EXPIRED'
+            cart.save()
+            cart = None
+        
+        # Create cart if None exsits and return as ACTIVE
         if not cart:
-            cart = Cart.objects.create(user=user)
+            cart = Cart.objects.create(
+                user=user,
+                status="ACTIVE",
+                expires_at=now + timezone.timedelta(hours=CartService.TTL_HOURS)
+            )
+        
         return cart
+    
+    
+    @staticmethod
+    def extend_cart_ttl(cart):
+        cart.expires_at = timezone.now() + timezone.timedelta(hours=CartService.EXTENSION_HOURS)
+        cart.save()
     
     
     @staticmethod
     @transaction.atomic
     def add_to_cart(user, product_id, quantity):
+        # Get product and product price
         product = Product.objects.filter(id=product_id, is_active=True).first()
-        
         price = product.price
         
+        # Validates product exists
         if not product:
             raise ValueError("Product not found or inactive.")
         
+        # Validates quantity
         if quantity <= 0:
             raise ValueError("Quantity must be positive.")
         
+        # Get or create active cart
         cart = CartService.get_active_cart(user)
         
+        # Create new cart item
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
@@ -55,12 +77,13 @@ class CartService:
             }
         )
         
+        # if item exists increase its quantity
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
             
-            
-        cart.extend_ttl()
+        # Then extend cart time-to-live duration and return it
+        CartService.extend_cart_ttl(cart)
         return cart
     
     
@@ -95,4 +118,11 @@ class CartService:
         # Mark cart as checked out
         cart.status = 'CHECKED_OUT'
         cart.save()
+        
+        # Auto-create new empty active cart
+        new_cart = Cart.objects.create(
+            user=user,
+            status='ACTIVE',
+            expires_at=timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
+        )
         return cart
