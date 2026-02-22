@@ -2,8 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.generics import ListAPIView
+from django.contrib.auth import get_user_model
 
+from .models import Cart
 from .services import CartService
 from .models import CartItem
 from .serializers import (
@@ -11,6 +14,9 @@ from .serializers import (
     AddToCartSerializer,
     UpdateCartItemSerializer, 
 )
+
+
+User = get_user_model()
 
 
 # Create your views here.
@@ -93,3 +99,28 @@ class CheckoutView(APIView):
             "message": "Checkout successful",
             "cart_id": cart.id
         })
+        
+        
+# Admin views
+class AdminCartListView(ListAPIView):
+    """
+        Admin: view all carts in the system, sorted by date created and status 
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = CartSerializer
+    
+    def get_queryset(self):
+        return Cart.objects.all().order_by("-created_at", "status")
+    
+    
+    
+class AdminUserCartHistoryView(ListAPIView):
+    """
+        Admin: view all carts of a specific user including active and past carts 
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = [CartSerializer]
+    
+    def get_queryset(self):
+        user_id = self.kwargs["user_id"] 
+        return Cart.objects.filter(user_id=user_id).order_by("-created_at")
