@@ -94,10 +94,12 @@ class CheckoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        cart = CartService.checkout_cart(request.user)
+        checked_out_cart, new_active_cart = CartService.checkout_cart(request.user)
+        
         return Response({
             "message": "Checkout successful",
-            "cart_id": cart.id
+            "checked_out_cart": CartSerializer(checked_out_cart).data,
+            "new_active_cart": CartSerializer(new_active_cart).data,
         })
         
         

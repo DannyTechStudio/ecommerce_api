@@ -93,10 +93,16 @@ class CartService:
         """
             Transition active cart to checked out after validating stock 
         """
-        cart = CartService.get_active_cart(user)
+        cart = Cart.objects.filter(user=user, status="ACTIVE").first()
         
-        if cart.status != "ACTIVE":
-            raise ValueError("Cart is not active")
+        if not cart:
+            raise ValueError("No active cart found.")
+        
+        if cart.expires_at < timezone.now():
+            cart.status = "EXPIRED"
+            cart.save()
+            cart = Cart.objects.create(user=user)
+            raise ValueError("Cart expired. New active cart created.")
         
         if not cart.items.exists():
             raise ValueError("Cart is empty")
@@ -126,4 +132,4 @@ class CartService:
             expires_at=timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
         )
         
-        return cart
+        return cart, new_cart
