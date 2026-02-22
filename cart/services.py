@@ -28,7 +28,7 @@ class CartService:
         
         # Expire cart if past TTL
         if cart and cart.expires_at < now:
-            cart.expires_at = 'EXPIRED'
+            cart.expires_at = "EXPIRED"
             cart.save()
             cart = None
         
@@ -122,13 +122,13 @@ class CartService:
             item.product.save()
             
         # Mark cart as checked out
-        cart.status = 'CHECKED_OUT'
+        cart.status = "CHECKED_OUT"
         cart.save()
         
         # Auto-create new empty active cart
         new_cart = Cart.objects.create(
             user=user,
-            status='ACTIVE',
+            status="ACTIVE",
             expires_at=timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
         )
         
