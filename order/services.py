@@ -23,7 +23,7 @@ class OrderService:
     @staticmethod
     def generate_order_number():
         while True:
-            number = "ORD-" + uuid.uuid4().hex[:8].upper()
+            number = "ORD-" + uuid.uuid4().hex[:10].upper()
             if not Order.objects.filter(order_number=number).exists():
                 return number
     
