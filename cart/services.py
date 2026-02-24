@@ -133,3 +133,13 @@ class CartService:
         )
         
         return cart, new_cart
+    
+    
+    @staticmethod
+    def get_checked_out_cart(user):
+        cart = Cart.objects.filter(user=user, status="CHECKED_OUT").order_by("-created_at").first()
+        
+        if not cart:
+            raise ValueError("No checked-out cart found")
+        
+        return cart
