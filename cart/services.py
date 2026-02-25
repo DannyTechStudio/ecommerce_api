@@ -1,10 +1,12 @@
 from django.db import transaction
+from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser
 
 from catalog.models import Product
-from .models import Cart, CartItem
+from .models import Cart, CartItem, CartStatus
 
+from order.services import OrderService
 
 class CartService:
     # Cart TTL and extension in hours
@@ -23,12 +25,11 @@ class CartService:
         """
             Returns active cart or creates a new one if expired or None
         """
-        cart = Cart.objects.filter(user=user, status='ACTIVE').first()
-        now = timezone.now()
+        cart = Cart.objects.filter(user=user, status=CartStatus.ACTIVE).first()
         
         # Expire cart if past TTL
-        if cart and cart.expires_at < now:
-            cart.expires_at = "EXPIRED"
+        if cart and cart.expires_at < timezone.now():
+            cart.expires_at = CartStatus.EXPIRED
             cart.save()
             cart = None
         
@@ -36,8 +37,8 @@ class CartService:
         if not cart:
             cart = Cart.objects.create(
                 user=user,
-                status="ACTIVE",
-                expires_at=now + timezone.timedelta(hours=CartService.TTL_HOURS)
+                status=CartStatus.ACTIVE,
+                expires_at=timezone.now() + timedelta(hours=CartService.TTL_HOURS)
             )
         
         return cart
@@ -45,7 +46,7 @@ class CartService:
     
     @staticmethod
     def extend_cart_ttl(cart):
-        cart.expires_at = timezone.now() + timezone.timedelta(hours=CartService.EXTENSION_HOURS)
+        cart.expires_at = timezone.now() + timedelta(hours=CartService.EXTENSION_HOURS)
         cart.save()
     
     
@@ -89,55 +90,85 @@ class CartService:
     
     @staticmethod
     @transaction.atomic
-    def checkout_cart(user):
+    def checkout_cart(user, address):
         """
             Transition active cart to checked out after validating stock 
         """
-        cart = Cart.objects.filter(user=user, status="ACTIVE").first()
         
+        # Fetch active cart with row-level lock
+        cart = (
+            Cart.objects
+            .select_for_update()
+            .filter(user=user, status=CartStatus.ACTIVE)
+            .first()
+        )
+            
         if not cart:
             raise ValueError("No active cart found.")
         
+        # Expiry check
         if cart.expires_at < timezone.now():
-            cart.status = "EXPIRED"
-            cart.save()
-            cart = Cart.objects.create(user=user)
+            cart.status = CartStatus.EXPIRED
+            cart.save(update_fields=["status"])
+            
+            Cart.objects.create(
+                user=user,
+                status=CartStatus.ACTIVE,
+                expires_at= timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
+            )
+            
             raise ValueError("Cart expired. New active cart created.")
         
-        if not cart.items.exists():
+        # Lock cart items + products in one query
+        items = list(cart.items.select_related("product").select_for_update())
+        
+        if not items:
             raise ValueError("Cart is empty")
         
-        # Stock validation
-        unavailable_items = []
-        for item in cart.items.select_related('product'):
-            if item.quantity > item.product.quantity:
-                unavailable_items.append(item.product.name)
+        # Validate stock availability
+        unavailable_items = [
+            item.product.name
+            for item in items
+            if item.quantity > item.product.quantity
+        ]
                 
         if unavailable_items:
             raise ValueError(f"Stock insufficient for: {', '.join(unavailable_items)}")
         
         # Deduct stock
-        for item in cart.items.select_related('product'):
-            item.product.quantity -= item.quantity
-            item.product.save()
+        for item in items:
+            product = item.product
+            product.quantity -= item.quantity
+            product.save(update_fields=["quantity"])
             
         # Mark cart as checked out
-        cart.status = "CHECKED_OUT"
-        cart.save()
+        cart.status = CartStatus.CHECKED_OUT
+        cart.save(update_fields=["status"])
         
-        # Auto-create new empty active cart
+        # Create order from checked out cart
+        order = OrderService.create_order_from_cart(
+            user=user,
+            cart=cart,
+            address=address
+        )
+        
+        # Create new empty active cart
         new_cart = Cart.objects.create(
             user=user,
-            status="ACTIVE",
+            status=CartStatus.ACTIVE,
             expires_at=timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
         )
         
-        return cart, new_cart
+        return {
+            "order": order, 
+            "checked_out_cart": cart, 
+            "active_cart": new_cart,
+        }
     
     
     @staticmethod
     def get_checked_out_cart(user):
-        cart = Cart.objects.filter(user=user, status="CHECKED_OUT").order_by("-created_at").first()
+        cart = Cart.objects.filter(user=user, status=CartStatus.CHECKED_OUT).order_by("-created_at").first()
         
         if not cart:
             raise ValueError("No checked-out cart found")
