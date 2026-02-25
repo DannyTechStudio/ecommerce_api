@@ -1,7 +1,8 @@
 import uuid
+from decimal import Decimal
 from django.db import transaction
 
-from cart.models import CartStatus
+from cart.models import Cart, CartStatus
 
 from .models import (
     OrderStatus, 
@@ -40,7 +41,7 @@ class OrderService:
             raise ValueError("Cart does not belong to user")
         
         # Validate cart status
-        if cart.status != CartStatus.CHECKED_OUT:
+        if cart.status != Cart.CartStatus.CHECKED_OUT:
             raise ValueError("Cart must be checked out")
         
         # Validate that cart is not empty
@@ -51,11 +52,17 @@ class OrderService:
         if Order.objects.filter(cart=cart).exists():
             raise ValueError("Order already exists for this cart")
         
-        # Compute total price
-        total_price = 0
+        # Obtain cart items
+        items = list(cart.items.selected_related("product"))
         
-        for item in cart.items.all():
-            total_price += item.quantity * item.price_snapshot
+        if not items:
+            raise ValueError("Cannot create order from empty cart")
+        
+        # Compute total price using Decimal-safe accumulation
+        total_price = sum(
+            (item.quantity * item.price_snapshot for item in items),
+            Decimal("0.00")
+        )
         
         # Create order
         order = Order(
@@ -67,10 +74,12 @@ class OrderService:
             shipping_address=address,
         )
         
+        # Cpoy shipping snapshot fields
         OrderService.copy_shipping_snapshot(order, address)
         order.save()
         
-        for item in cart.items.select_related("product"):
+        # Create order item snapshots
+        order_items = [
             OrderItem.objects.create(
                 order=order,
                 product_id=item.product.id,
@@ -79,6 +88,10 @@ class OrderService:
                 unit_price=item.price_snapshot,
                 line_total=item.quantity * item.price_snapshot
             )
+            for item in items
+        ]
+        
+        OrderItem.objects.bulk_create(order_items)
         
         return order
         
