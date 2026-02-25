@@ -6,14 +6,17 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.generics import ListAPIView
 from django.contrib.auth import get_user_model
 
+from accounts.models import Address
 from .models import Cart
 from .services import CartService
 from .models import CartItem
 from .serializers import (
     CartSerializer,
     AddToCartSerializer,
-    UpdateCartItemSerializer, 
+    UpdateCartItemSerializer,
+    CheckoutResponseSerializer,
 )
+
 
 
 User = get_user_model()
@@ -90,17 +93,41 @@ class RemoveCartItemView(APIView):
         )
         
         
-class CheckoutView(APIView):
+class CheckoutCartView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request):
-        checked_out_cart, new_active_cart = CartService.checkout_cart(request.user)
+        address_id = request.data.get("address_id")
         
-        return Response({
-            "message": "Checkout successful",
-            "checked_out_cart": CartSerializer(checked_out_cart).data,
-            "new_active_cart": CartSerializer(new_active_cart).data,
-        })
+        if not address_id:
+            return Response(
+                {"detail": "Address ID is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        address = get_object_or_404(
+            Address,
+            id=address_id,
+            user=request.user
+        )
+        
+        try:
+            result = CartService.checkout_cart(
+                user=request.user,
+                address=address
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        serializer = CheckoutResponseSerializer(result)
+        
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
         
         
 # Admin views

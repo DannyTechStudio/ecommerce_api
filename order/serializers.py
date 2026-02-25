@@ -43,14 +43,6 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = tuple(fields)
         
-        
-class CheckoutResponseSerializer(serializers.Serializer):
-    order = OrderSerializer()
-    checked_out_cart_id = serializers.UUIDField(source="checked_out_cart.id") 
-    new_active_cart_id = serializers.UUIDField(source="active_cart.id") 
-    message = serializers.SerializerMethodField()
-     
-    def get_message(self, obj): 
-        return "Checkout successful"
+
             
             

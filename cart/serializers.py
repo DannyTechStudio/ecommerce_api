@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Cart, CartItem
 
+from order.serializers import OrderSerializer
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_id = serializers.UUIDField(source="product.id", read_only=True)
@@ -38,3 +40,13 @@ class AddToCartSerializer(serializers.Serializer):
 
 class UpdateCartItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
+    
+
+class CheckoutResponseSerializer(serializers.Serializer):
+    order = OrderSerializer()
+    checked_out_cart_id = serializers.UUIDField(source="checked_out_cart.id") 
+    new_active_cart_id = serializers.UUIDField(source="active_cart.id") 
+    message = serializers.SerializerMethodField()
+     
+    def get_message(self, obj): 
+        return "Checkout successful"
