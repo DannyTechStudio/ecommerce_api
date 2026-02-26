@@ -29,7 +29,7 @@ class CartService:
         
         # Expire cart if past TTL
         if cart and cart.expires_at < timezone.now():
-            cart.expires_at = CartStatus.EXPIRED
+            cart.status = CartStatus.EXPIRED
             cart.save()
             cart = None
         
