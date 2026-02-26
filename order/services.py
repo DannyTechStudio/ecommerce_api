@@ -41,7 +41,7 @@ class OrderService:
             raise ValueError("Cart does not belong to user")
         
         # Validate cart status
-        if cart.status != Cart.CartStatus.CHECKED_OUT:
+        if cart.status != CartStatus.CHECKED_OUT:
             raise ValueError("Cart must be checked out")
         
         # Validate that cart is not empty
@@ -53,7 +53,7 @@ class OrderService:
             raise ValueError("Order already exists for this cart")
         
         # Obtain cart items
-        items = list(cart.items.selected_related("product"))
+        items = list(cart.items.select_related("product"))
         
         if not items:
             raise ValueError("Cannot create order from empty cart")
