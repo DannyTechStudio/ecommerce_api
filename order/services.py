@@ -74,13 +74,13 @@ class OrderService:
             shipping_address=address,
         )
         
-        # Cpoy shipping snapshot fields
+        # Copy shipping snapshot fields
         OrderService.copy_shipping_snapshot(order, address)
         order.save()
         
         # Create order item snapshots
         order_items = [
-            OrderItem.objects.create(
+            OrderItem(
                 order=order,
                 product_id=item.product.id,
                 product_name=item.product.name,
