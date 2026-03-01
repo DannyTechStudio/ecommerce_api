@@ -30,6 +30,7 @@ class Order(models.Model):
     shipping_full_name = models.CharField(max_length=255)
     shipping_line1 = models.CharField(max_length=255)
     shipping_line2 = models.CharField(max_length=255, blank=True)
+    shipping_street_address = models.CharField(max_length=255, blank=True)
     shipping_city = models.CharField(max_length=100)
     shipping_state = models.CharField(max_length=100)
     shipping_country = models.CharField(max_length=100)
