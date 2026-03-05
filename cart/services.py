@@ -10,8 +10,8 @@ from order.services import OrderService
 
 class CartService:
     # Cart TTL and extension in hours
-    TTL_HOURS = 22
-    EXTENSION_HOURS = 15
+    TTL_HOURS = timedelta(hours=360)
+    EXTENSION_HOURS = timedelta(hours=12)
     
     
     @staticmethod
@@ -21,11 +21,16 @@ class CartService:
     
     
     @staticmethod
-    def get_active_cart(user):
+    def get_or_create_active_cart(user):
         """
             Returns active cart or creates a new one if expired or None
         """
-        cart = Cart.objects.filter(user=user, status=CartStatus.ACTIVE).first()
+        cart = (
+            Cart.objects
+            .select_for_update()
+            .filter(user=user, status=CartStatus.ACTIVE)
+            .first()
+        )
         
         # Expire cart if past TTL
         if cart and cart.expires_at < timezone.now():
@@ -38,7 +43,7 @@ class CartService:
             cart = Cart.objects.create(
                 user=user,
                 status=CartStatus.ACTIVE,
-                expires_at=timezone.now() + timedelta(hours=CartService.TTL_HOURS)
+                expires_at=timezone.now() + CartService.TTL_HOURS
             )
         
         return cart
@@ -46,7 +51,7 @@ class CartService:
     
     @staticmethod
     def extend_cart_ttl(cart):
-        cart.expires_at = timezone.now() + timedelta(hours=CartService.EXTENSION_HOURS)
+        cart.expires_at = timezone.now() + CartService.EXTENSION_HOURS
         cart.save()
     
     
@@ -66,7 +71,14 @@ class CartService:
             raise ValueError("Quantity must be positive.")
         
         # Get or create active cart
-        cart = CartService.get_active_cart(user)
+        cart = CartService.get_or_create_active_cart(user)
+        
+        # lock cart row
+        cart = (
+            Cart.objects
+            .select_for_update()
+            .get(id=cart.id)
+        )
         
         # Create new cart item
         cart_item, created = CartItem.objects.get_or_create(
@@ -85,7 +97,41 @@ class CartService:
             
         # Then extend cart time-to-live duration and return it
         CartService.extend_cart_ttl(cart)
+        
         return cart
+    
+    
+    @staticmethod
+    def lock_cart(cart):
+        cart.status = CartStatus.LOCKED
+        cart.locked_at = timezone.now()
+        cart.save(update_fields=["status", "locked_at"])
+        
+        
+    @staticmethod
+    def consume_cart(cart):
+        cart.status = CartStatus.CONSUMED
+        cart.save(update_fields=["status"])
+        
+    
+    @staticmethod
+    def restore_cart(cart):
+        if cart.status != CartStatus.LOCKED:
+            raise ValueError("Only locked cart can be restored")
+        
+        cart.status = CartStatus.ACTIVE
+        cart.locked_at = None
+        cart.save(update_fields=["status", "locked_at"])
+        
+        
+    @staticmethod
+    def expire_cart(cart):
+        if cart.status != CartStatus.ACTIVE:
+            raise ValueError("Cart not found or locked")
+        
+        if cart.expires_at < timezone.now():
+            cart.status = CartStatus.EXPIRED
+            cart.save(update_fields=["status"])
     
     
     @staticmethod
@@ -110,14 +156,7 @@ class CartService:
         if cart.expires_at < timezone.now():
             cart.status = CartStatus.EXPIRED
             cart.save(update_fields=["status"])
-            
-            Cart.objects.create(
-                user=user,
-                status=CartStatus.ACTIVE,
-                expires_at= timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
-            )
-            
-            raise ValueError("Cart expired. New active cart created.")
+            raise ValueError("Cart expired")
         
         # Lock cart items + products in one query
         items = list(cart.items.select_related("product").select_for_update())
@@ -126,51 +165,23 @@ class CartService:
             raise ValueError("Cart is empty")
         
         # Validate stock availability
-        unavailable_items = [
-            item.product.name
-            for item in items
-            if item.quantity > item.product.quantity
-        ]
-                
-        if unavailable_items:
-            raise ValueError(f"Stock insufficient for: {', '.join(unavailable_items)}")
-        
-        # Deduct stock
         for item in items:
-            product = item.product
-            product.quantity -= item.quantity
-            product.save(update_fields=["quantity"])
+            if item.quantity > item.product.quantity:
+                raise ValueError(f"Insufficient stock for {item.product.name}")
             
-        # Mark cart as checked out
-        cart.status = CartStatus.CHECKED_OUT
-        cart.save(update_fields=["status"])
+        # Lock cart
+        cart.status = CartStatus.LOCKED
+        cart.locked_at = timezone.now()
+        cart.save(update_fields=["status", "locked_at"])
         
-        # Create order from checked out cart
+        # Create order from locked cart
         order = OrderService.create_order_from_cart(
             user=user,
             cart=cart,
             address=address
         )
         
-        # Create new empty active cart
-        new_cart = Cart.objects.create(
-            user=user,
-            status=CartStatus.ACTIVE,
-            expires_at=timezone.now() + timezone.timedelta(hours=CartService.TTL_HOURS)
-        )
-        
         return {
             "order": order, 
-            "checked_out_cart": cart, 
-            "active_cart": new_cart,
+            "cart": cart, 
         }
-    
-    
-    @staticmethod
-    def get_checked_out_cart(user):
-        cart = Cart.objects.filter(user=user, status=CartStatus.CHECKED_OUT).order_by("-created_at").first()
-        
-        if not cart:
-            raise ValueError("No checked-out cart found")
-        
-        return cart
