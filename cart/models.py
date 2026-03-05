@@ -10,9 +10,10 @@ User = settings.AUTH_USER_MODEL
 
 # Cart Status Enum
 class CartStatus(models.TextChoices):
-    ACTIVE = "active", "ACTIVE"
-    CHECKED_OUT = "checked_out", "CHECKED_OUT"
-    EXPIRED = "expired", "EXPIRED"
+    ACTIVE = "active", "Active"
+    LOCKED = "locked", "Locked"
+    CONSUMED = "consumed", "Consumed"
+    EXPIRED = "expired", "Expired"
 
 
 # Create your models here.
@@ -20,17 +21,18 @@ class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cart")
     status = models.CharField(max_length=15, choices=CartStatus.choices, default=CartStatus.ACTIVE)
-    expires_at = models.DateTimeField()
+    locked_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    TTL = timedelta(days=15)
+    TTL = timedelta(hours=360)
     EXTENSION = timedelta(hours=12)
     
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user"], condition=models.Q(status="ACTIVE"),
+                fields=["user"], condition=models.Q(status=CartStatus.ACTIVE),
                 name="unique_active_cart_per_user"
             )
         ]
