@@ -21,7 +21,7 @@ class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(max_length=20, unique=True)
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="orders")
-    cart = models.ForeignKey(Cart, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders")
+    cart = models.OneToOneField(Cart, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders")
     status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     shipping_address = models.ForeignKey(Address, on_delete=models.PROTECT, related_name="orders")
