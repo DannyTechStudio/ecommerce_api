@@ -7,6 +7,8 @@ from .models import OrderStatus, Order, OrderItem
 from cart.models import CartStatus
 
 class OrderService:
+    DEFAULT_CURRENCY = "GHS"
+    
     @staticmethod
     def copy_shipping_snapshot(order, address):
         order.shipping_full_name = address.full_name
@@ -23,6 +25,7 @@ class OrderService:
     @staticmethod
     def generate_order_number():
         return "ORD-" + uuid.uuid4().hex[:10].upper()
+    
     
     @staticmethod
     def generate_unique_order_number():
@@ -53,7 +56,16 @@ class OrderService:
             raise ValueError("Order already exists for this cart")
         
         # Obtain cart items
-        items = list(cart.items.select_related("product"))
+        items = list(
+            cart.items
+            .select_related("product")
+            .only(
+                "quantity",
+                "price_snapshot",
+                "product__id",
+                "product__name"
+            )
+        )
         
         if not items:
             raise ValueError("Cannot checkout empty cart")
@@ -66,21 +78,23 @@ class OrderService:
         
         # Create order
         try:
-            order = Order.objects.create(
+            order = Order(
                 order_number=OrderService.generate_unique_order_number(),
                 user=user,
                 cart=cart,
                 status = OrderStatus.PENDING,
                 total_price=total_price,
+                currency=OrderService.DEFAULT_CURRENCY,
                 shipping_address=address,
             )
         except IntegrityError:
-            order = Order.objects.create(
+            order = Order(
                 order_number=OrderService.generate_unique_order_number(),
                 user=user,
                 cart=cart,
                 status = OrderStatus.PENDING,
                 total_price=total_price,
+                currency=OrderService.DEFAULT_CURRENCY,
                 shipping_address=address,
             )
             
@@ -105,7 +119,8 @@ class OrderService:
         OrderItem.objects.bulk_create(order_items)
         
         return order
-        
+    
+    
     @staticmethod
     def cancel_order(order):
         if order.status == OrderStatus.CANCELED:
@@ -121,7 +136,7 @@ class OrderService:
         
             
     @staticmethod
-    def mark_paid(order):
+    def mark_as_paid(order):
         if order.status == OrderStatus.PAID:
             return order
         
@@ -136,7 +151,7 @@ class OrderService:
 
     
     @staticmethod
-    def mark_shipped(order):
+    def mark_as_shipped(order):
         if order.status != OrderStatus.PAID:
             raise ValueError("Only paid orders can be marked as shipped")
         
@@ -147,7 +162,7 @@ class OrderService:
 
     
     @staticmethod
-    def mark_delivered(order):
+    def mark_as_delivered(order):
         if order.status != OrderStatus.SHIPPED:
             raise ValueError("Only shipped orders can be marked as delivered")
         
@@ -159,7 +174,7 @@ class OrderService:
     
     @staticmethod
     @transaction.atomic
-    def complete_order(order_id, payment_method):
+    def complete_order(user, order_id, payment_method):
         order = (
             Order.objects
             .select_for_update()
@@ -167,12 +182,19 @@ class OrderService:
             .get(id=order_id)
         )
         
+        # Validate order belongs to the user
+        if order.user != user:
+            raise ValueError("Order does not belong to user")
+        
         # Validate status
         if order.status != OrderStatus.PENDING:
             raise ValueError("Order cannot be paid")
         
+        # Lazy import
+        from payment.models import Payment
+        
         # Check existing payment
-        if hasattr(order, "payment"):
+        if Payment.objects.filter(order=order).exists():
             raise ValueError("Payment already initiated for this order")
         
         # Ensure payment hasn't been created already
@@ -183,9 +205,11 @@ class OrderService:
         from payment.services import PaymentService
         
         # Create the payment
-        payment = PaymentService.initiate_payment(order, payment_method)
+        payment = PaymentService.initiate_payment(
+            order=order, 
+            payment_method=payment_method
+        )
         
-        # Return payment 
         return payment
         
         
