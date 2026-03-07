@@ -216,4 +216,29 @@ class CartService:
         cart.locked_at = None
         cart.save(update_fields=["status", "locked_at"])
 
+
+    @staticmethod
+    @transaction.atomic
+    def update_cart_item(item, quantity):
+        product = Product.objects.select_for_update().get(id=item.product_id)
         
+        if quantity > product.quantity:
+            raise ValueError("Insufficient stock")
+        
+        item.quantity = quantity
+        item.save(update_fields=["quantity"])
+        
+        CartService.extend_cart_ttl(item.cart)
+        
+        return item.cart
+    
+    
+    @staticmethod
+    @transaction.atomic
+    def remove_cart_item(item):
+        cart = item.cart
+        item.delete()
+        
+        CartService.extend_cart_ttl(cart)
+        
+        return cart 
