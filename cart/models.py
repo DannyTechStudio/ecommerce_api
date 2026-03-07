@@ -41,11 +41,6 @@ class Cart(models.Model):
         if not self.expires_at:
             self.expires_at = timezone.now() + self.TTL
         super().save(*args, **kwargs)
-        
-    def extend_ttl(self):
-        """ Extends cart expiration when the user interacts meaningfully """
-        self.expires_at = max(self.expires_at, timezone.now() + self.EXTENSION)
-        self.save()
     
     def __str__(self):
         return f"Cart: {self.id}, Status: {self.status}"
