@@ -10,17 +10,9 @@ from accounts.models import Address
 from .models import Cart
 from .services import CartService
 from .models import CartItem
-from .serializers import (
-    CartSerializer,
-    AddToCartSerializer,
-    UpdateCartItemSerializer,
-    CheckoutResponseSerializer,
-)
-
-
+from .serializers import CartSerializer, AddToCartSerializer, UpdateCartItemSerializer, CheckoutResponseSerializer
 
 User = get_user_model()
-
 
 # Create your views here.
 class CartView(APIView):
@@ -29,7 +21,7 @@ class CartView(APIView):
     Get current active cart or auto-create
     """
     def get(self, request):
-        cart = CartService.get_active_cart(request.user)
+        cart = CartService.get_or_create_active_cart(request.user)
         return Response(CartSerializer(cart).data)
     
     
@@ -66,11 +58,18 @@ class UpdateCartItemView(APIView):
             cart__status="ACTIVE",
         )
         
-        item.quantity = serializer.validated_data["quantity"]
-        item.save()
+        try:
+            cart = CartService.update_cart_item(
+                item,
+                serializer.validated_data["quantity"]
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
-        item.cart.extend_ttl()
-        return Response({"message": "Item updated"})
+        return Response(CartSerializer(cart).data)
     
     
 class RemoveCartItemView(APIView):
@@ -84,11 +83,10 @@ class RemoveCartItemView(APIView):
             cart__status="ACTIVE",
         )
         
-        cart = item.cart
-        item.delete()
-        cart.extend_ttl()
+        cart = CartService.remove_cart_item(item)
         
         return Response(
+            CartSerializer(cart).data,
             status=status.HTTP_204_NO_CONTENT
         )
         
@@ -148,7 +146,7 @@ class AdminUserCartHistoryView(ListAPIView):
         Admin: view all carts of a specific user including active and past carts 
     """
     permission_classes = [IsAdminUser]
-    serializer_class = [CartSerializer]
+    serializer_class = CartSerializer
     
     def get_queryset(self):
         user_id = self.kwargs["user_id"] 
