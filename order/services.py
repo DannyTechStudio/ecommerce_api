@@ -1,32 +1,36 @@
 import uuid
 from decimal import Decimal
-from django.db import transaction
+from django.db import transaction, IntegrityError
+from django.utils import timezone
 
-from cart.models import Cart, CartStatus
-
-from .models import (
-    OrderStatus, 
-    Order, 
-    OrderItem
-)
+from .models import OrderStatus, Order, OrderItem
+from cart.models import CartStatus
 
 class OrderService:
     @staticmethod
     def copy_shipping_snapshot(order, address):
         order.shipping_full_name = address.full_name
-        order.shipping_street_address = address.street_address
+        order.shipping_line1 = getattr(address, "line1", "")
+        order.shipping_line2 = getattr(address, "line2", "")
+        order.shipping_street_address = getattr(address, "street_address", "")
         order.shipping_city = address.city
         order.shipping_state = address.state
         order.shipping_country = address.country
-        order.shipping_phone = address.phone
+        order.shipping_postal_code = getattr(address, "postal_code", "")
+        order.shipping_phone = getattr(address, "phone", "")
     
     
     @staticmethod
     def generate_order_number():
-        while True:
-            number = "ORD-" + uuid.uuid4().hex[:10].upper()
+        return "ORD-" + uuid.uuid4().hex[:10].upper()
+    
+    @staticmethod
+    def generate_unique_order_number():
+        for _ in range(5):
+            number = OrderService.generate_order_number()
             if not Order.objects.filter(order_number=number).exists():
                 return number
+        raise RuntimeError("Unable to generate unique order number")
     
     
     @staticmethod
@@ -40,13 +44,9 @@ class OrderService:
         if cart.user != user:
             raise ValueError("Cart does not belong to user")
         
-        # Validate cart status
-        if cart.status != CartStatus.CHECKED_OUT:
-            raise ValueError("Cart must be checked out")
-        
-        # Validate that cart is not empty
-        if not cart.items.exists():
-            raise ValueError("Cart is empty")
+        # Validate cart status - locked
+        if cart.status != CartStatus.LOCKED:
+            raise ValueError("Cart must be locked before creating order")
         
         # Prevent duplicate order for the same cart
         if Order.objects.filter(cart=cart).exists():
@@ -56,7 +56,7 @@ class OrderService:
         items = list(cart.items.select_related("product"))
         
         if not items:
-            raise ValueError("Cannot create order from empty cart")
+            raise ValueError("Cannot checkout empty cart")
         
         # Compute total price using Decimal-safe accumulation
         total_price = sum(
@@ -65,14 +65,25 @@ class OrderService:
         )
         
         # Create order
-        order = Order(
-            order_number=OrderService.generate_order_number(),
-            user=user,
-            cart=cart,
-            status = OrderStatus.PENDING,
-            total_price=total_price,
-            shipping_address=address,
-        )
+        try:
+            order = Order.objects.create(
+                order_number=OrderService.generate_unique_order_number(),
+                user=user,
+                cart=cart,
+                status = OrderStatus.PENDING,
+                total_price=total_price,
+                shipping_address=address,
+            )
+        except IntegrityError:
+            order = Order.objects.create(
+                order_number=OrderService.generate_unique_order_number(),
+                user=user,
+                cart=cart,
+                status = OrderStatus.PENDING,
+                total_price=total_price,
+                shipping_address=address,
+            )
+            
         
         # Copy shipping snapshot fields
         OrderService.copy_shipping_snapshot(order, address)
@@ -95,5 +106,86 @@ class OrderService:
         
         return order
         
+    @staticmethod
+    def cancel_order(order):
+        if order.status == OrderStatus.CANCELED:
+            return order
+        
+        if order.status != OrderStatus.PENDING:
+            raise ValueError("Only pending orders can be canceled")
+        
+        order.status = OrderStatus.CANCELED
+        order.save(update_fields=["status"])
+        
+        return order
+        
+            
+    @staticmethod
+    def mark_paid(order):
+        if order.status == OrderStatus.PAID:
+            return order
+        
+        if order.status != OrderStatus.PENDING:
+            raise ValueError("Only pending orders can be marked as paid")
+        
+        order.status = OrderStatus.PAID
+        order.paid_at = timezone.now()
+        order.save(update_fields=["status", "paid_at"])
+        
+        return order
+
+    
+    @staticmethod
+    def mark_shipped(order):
+        if order.status != OrderStatus.PAID:
+            raise ValueError("Only paid orders can be marked as shipped")
+        
+        order.status = OrderStatus.SHIPPED
+        order.save(update_fields=["status"])
+        
+        return order
+
+    
+    @staticmethod
+    def mark_delivered(order):
+        if order.status != OrderStatus.SHIPPED:
+            raise ValueError("Only shipped orders can be marked as delivered")
+        
+        order.status = OrderStatus.DELIVERED
+        order.save(update_fields=["status"])
+        
+        return order
+    
+    
+    @staticmethod
+    @transaction.atomic
+    def complete_order(order_id, payment_method):
+        order = (
+            Order.objects
+            .select_for_update()
+            .select_related("cart")
+            .get(id=order_id)
+        )
+        
+        # Validate status
+        if order.status != OrderStatus.PENDING:
+            raise ValueError("Order cannot be paid")
+        
+        # Check existing payment
+        if hasattr(order, "payment"):
+            raise ValueError("Payment already initiated for this order")
+        
+        # Ensure payment hasn't been created already
+        if not payment_method.is_active:
+            raise ValueError("Payment method inactive")
+        
+        # Lazy import
+        from payment.services import PaymentService
+        
+        # Create the payment
+        payment = PaymentService.initiate_payment(order, payment_method)
+        
+        # Return payment 
+        return payment
         
         
