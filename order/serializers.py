@@ -1,9 +1,5 @@
 from rest_framework import serializers
-
-from .models import (
-    Order,
-    OrderItem
-)
+from .models import Order, OrderItem
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -22,6 +18,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    item_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -30,6 +27,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_number",
             "status",
             "total_price",
+            "currency",
             "created_at",
             "updated_at",
             "paid_at",
@@ -42,6 +40,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
         ]
         read_only_fields = tuple(fields)
+        
+    def get_item_count(self, obj):
+        return obj.items.count()
         
 
             

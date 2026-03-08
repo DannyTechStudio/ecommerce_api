@@ -138,8 +138,7 @@ class AdminCartListView(ListAPIView):
     
     def get_queryset(self):
         return Cart.objects.all().order_by("-created_at", "status")
-    
-    
+
     
 class AdminUserCartHistoryView(ListAPIView):
     """
