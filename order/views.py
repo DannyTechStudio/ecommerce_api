@@ -15,11 +15,16 @@ class UserOrdersView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        orders = Order.objects.filter(user=request.user).order_by("-created_at")
-        
-        return Response(
-            OrderSerializer(orders, many=True).data
+        orders = (
+            Order.objects
+            .filter(user=request.user)
+            .prefetch_related("items")
+            .order_by("-created_at")
         )
+        
+        serializer = OrderSerializer(orders, many=True)
+        
+        return Response(serializer.data)
         
         
 class OrderDetailView(APIView):
@@ -27,12 +32,12 @@ class OrderDetailView(APIView):
     
     def get(self, request, order_id):
         order = get_object_or_404(
-            Order,
+            Order.objects.prefetch_related("items"),
             id=order_id,
             user=request.user
         )
         
-        return Response(
-            OrderSerializer(order).data
-        )
+        serializer = OrderSerializer(order)
+        
+        return Response(serializer.data)
         

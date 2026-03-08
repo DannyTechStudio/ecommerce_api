@@ -45,5 +45,10 @@ class OrderSerializer(serializers.ModelSerializer):
         return obj.items.count()
         
 
-            
+class CompleteOrderSerializer(serializers.Serializer):
+    payment_method_id = serializers.UUIDField()
+    
+
+class CancelOrderSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=False)         
             
