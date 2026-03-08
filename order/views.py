@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 
 from .models import Order
-from .serializers import OrderSerializer
+from .serializers import OrderSerializer, CompleteOrderSerializer, CancelOrderSerializer
 
 User = get_user_model()
 
@@ -40,4 +40,69 @@ class OrderDetailView(APIView):
         serializer = OrderSerializer(order)
         
         return Response(serializer.data)
+
+
+class CompleteOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, order_id):
+        serializer = CompleteOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
+        payment_method_id = serializer.validated_data["payment_method_id"]
+
+        from payment.models import PaymentMethod
+        
+        payment_method = get_object_or_404(
+            PaymentMethod,
+            id=payment_method_id
+        )
+        
+        from .services import OrderService
+        
+        try:
+            payment = OrderService.complete_order(
+                user=request.user,
+                order_id=order_id,
+                payment_method=payment_method
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        return Response(
+            {
+                "payment_reference": payment.reference,
+                "payment_url": payment.payment_url,
+            }
+        )
+        
+        
+class CancelOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, order_id):
+        order = get_object_or_404(
+            Order,
+            id=order_id,
+            user=request.user
+        )
+        
+        from .services import OrderService
+        
+        try:
+            OrderService.cancel_order(order)
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        return Response(
+            {"message": "Order canceled"},
+            status=status.HTTP_200_OK
+        )
+
+
