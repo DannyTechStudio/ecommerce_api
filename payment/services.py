@@ -58,7 +58,7 @@ class PaymentService:
     @staticmethod
     @transaction.atomic
     def verify_payment(reference):
-        payment = Payment.objects.select_related("order").get(reference=reference)
+        payment = Payment.objects.select_for_update().select_related("order").get(reference=reference)
         
         if payment.status == PaymentStatus.SUCCESS:
             return payment
