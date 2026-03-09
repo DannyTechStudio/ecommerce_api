@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth import get_user_model
 
 from .models import Order
@@ -105,4 +105,51 @@ class CancelOrderView(APIView):
             status=status.HTTP_200_OK
         )
 
+
+class ShipOrderView(APIView):
+    permission_classes = [IsAdminUser]
+    
+    def post(self, request, order_id):
+        order = get_object_or_404(
+            Order,
+            id=order_id
+        )
+        
+        from .services import OrderService
+        
+        try:
+            OrderService.mark_as_shipped(order)
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"message": "Order shipped"}
+        )
+
+
+class DeliverOrderView(APIView):
+    permission_classes = [IsAdminUser]
+    
+    def post(self, request, order_id):
+        order = get_object_or_404(
+            Order,
+            id=order_id
+        )
+        
+        from .services import OrderService
+                
+        try:
+            OrderService.mark_as_delivered(order)
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        return Response(
+            {"message": "Order delivered"}
+        )
 
