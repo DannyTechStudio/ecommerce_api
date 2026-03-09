@@ -52,3 +52,15 @@ class Payment(models.Model):
     
     def __str__(self):
         return f"{self.order.order_number} - {self.method}"
+    
+    
+# Payment Event Model
+class PaymentEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=True)
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, name="events")
+    event_type = models.CharField(max_length=100)
+    payload = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ["-created_at"]
