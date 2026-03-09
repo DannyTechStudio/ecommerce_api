@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Payment, PaymentMethod
+from .models import Payment, PaymentMethod, PaymentEvent
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
@@ -23,4 +23,11 @@ class PaymentSeralizer(serializers.ModelSerializer):
         
 class PaymentVerifySerializer(serializers.Serializer):
     reference = serializers.CharField()
+
+
+class PaymentEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentEvent
+        fields = ["id", "payment", "event_type", "payload", "created_at"]
+        read_only_fields = fields
 
