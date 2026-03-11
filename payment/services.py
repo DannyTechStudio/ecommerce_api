@@ -2,7 +2,11 @@ import uuid
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Payment, PaymentMethod, PaymentStatus
+import requests
+from django.conf import settings
+
+from .models import Payment, PaymentStatus
+from .exceptions import PaymentVerification
 
 from catalog.models import Product
 from order.models import Order, OrderStatus
@@ -66,17 +70,33 @@ class PaymentService:
         if payment.status == PaymentStatus.FAILED:
             raise ValueError("Payment already failed")
         
-        provider_response = {
-            "status": "success",
-            "provider_reference": "PROV-" + uuid.uuid4().hex[:10].upper(),
-            "paid_at": timezone.now().isoformat(),
-        }
+        try:
+            # Paystack Verification API Call
+            response = requests.get(
+                f"https://api.paystack.co/transaction/verify/{reference}",
+                headers={
+                    "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
+                },
+                timeout=10
+            )
+        except requests.RequestException:
+            raise PaymentVerification("Provider verification failed")
         
-        # Update payment record based on provider response
-        if provider_response["status"] == "success":
+        response.raise_for_status()
+        
+        provider_response = response.json()
+        
+        data = provider_response.get("data", {})
+        
+        provider_status = data.get("status", "failed")
+        
+        # Update payment record based on provider response 
+        # Successful payment
+        if provider_status == "success":
             payment.status = PaymentStatus.PROCESSING
-            payment.provider_reference = provider_response["provider_reference"]
+            payment.provider_reference = data.get("id")
             payment.provider_response = provider_response
+            
             payment.save(update_fields=[
                 "status",
                 "provider_reference",
@@ -85,10 +105,15 @@ class PaymentService:
             
             return PaymentService.handle_successful_payment(payment.id) 
             
+        # Failed payment
         else:
             payment.status = PaymentStatus.FAILED
             payment.provider_response = provider_response
-            payment.save(update_fields=["status", "provider_response"])
+            
+            payment.save(update_fields=[
+                "status", 
+                "provider_response"
+            ])
             
             return payment
     
