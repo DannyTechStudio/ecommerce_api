@@ -10,9 +10,9 @@ from order.services import OrderService
 
 class CartService:
     # Cart TTL and extension in hours
-    CART_TTL = timedelta(hours=360)
-    CART_EXTENSION = timedelta(hours=12)
-    CART_LOCK_TTL = timedelta(minutes=15)
+    CART_TTL = timezone.timedelta(hours=360)
+    CART_EXTENSION = timezone.timedelta(hours=12)
+    CART_LOCK_TTL = timezone.timedelta(minutes=15)
     
     
     @staticmethod
