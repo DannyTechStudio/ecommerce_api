@@ -3,9 +3,9 @@ from .models import Cart, CartItem
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.UUIDField(source="product_id", read_only=True)
-    product_name = serializers.CharField(source="product_name", read_only=True)
-    price = serializers.DecimalField(source="price_snapshot", max_digits=12, decimal_places=2, read_only=True)
+    product_id = serializers.UUIDField(read_only=True)
+    product_name = serializers.CharField(read_only=True)
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     
     class Meta:
         model = CartItem
