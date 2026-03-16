@@ -26,8 +26,8 @@ class Cart(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    TTL = timedelta(hours=360)
-    EXTENSION = timedelta(hours=12)
+    CART_TTL = timezone.timedelta(hours=360)
+    CART_EXTENSION = timezone.timedelta(hours=12)
     
     class Meta:
         constraints = [
@@ -39,7 +39,7 @@ class Cart(models.Model):
         
     def save(self, *args, **kwargs):
         if not self.expires_at:
-            self.expires_at = timezone.now() + self.TTL
+            self.expires_at = timezone.now() + self.CART_TTL
         super().save(*args, **kwargs)
     
     def __str__(self):
