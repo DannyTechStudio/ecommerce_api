@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     UserOrdersView, 
     OrderDetailView, 
-    CompleteOrderView, 
+    PayOrderView, 
     CancelOrderView,
     ShipOrderView,
     DeliverOrderView,
@@ -11,7 +11,7 @@ from .views import (
 urlpatterns = [
     path("", UserOrdersView.as_view(), name="user-orders"),
     path("<uuid:order_id>/", OrderDetailView.as_view(), name="order-detail"),
-    path("<uuid:order_id>/complete/", CompleteOrderView.as_view(), name="complete-order"),
+    path("<uuid:order_id>/pay/", PayOrderView.as_view(), name="pay-order"),
     path("<uuid:order_id>/cancel/", CancelOrderView.as_view(), name="cancel-order"),
     path("<uuid:order_id>/ship/", ShipOrderView.as_view(), name="ship-order"),
     path("<uuid:order_id>/deliver/", DeliverOrderView.as_view(), name="deliver-order"),
