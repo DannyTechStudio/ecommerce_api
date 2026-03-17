@@ -10,7 +10,7 @@ from order.services import OrderService
 
 class CartService:
     # Cart TTL and extension in hours
-    CART_TTL = timezone.timedelta(hours=360)
+    CART_TTL = timezone.timedelta(hours=168)
     CART_EXTENSION = timezone.timedelta(hours=12)
     CART_LOCK_TTL = timezone.timedelta(minutes=15)
     
@@ -63,7 +63,7 @@ class CartService:
     
     @staticmethod
     def extend_cart_ttl(cart):
-        cart.expires_at = timezone.now() + CartService.CART_EXTENSION
+        cart.expires_at += CartService.CART_EXTENSION
         cart.save(update_fields=["expires_at"])
     
     
