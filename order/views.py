@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth import get_user_model
 
 from .models import Order
-from .serializers import OrderSerializer, CompleteOrderSerializer, CancelOrderSerializer
+from .serializers import OrderSerializer, PayOrderSerializer, CancelOrderSerializer
 
 User = get_user_model()
 
@@ -42,11 +42,11 @@ class OrderDetailView(APIView):
         return Response(serializer.data)
 
 
-class CompleteOrderView(APIView):
+class PayOrderView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, order_id):
-        serializer = CompleteOrderSerializer(data=request.data)
+        serializer = PayOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         payment_method_id = serializer.validated_data["payment_method_id"]
