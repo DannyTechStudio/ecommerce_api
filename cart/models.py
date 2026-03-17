@@ -26,8 +26,6 @@ class Cart(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    CART_TTL = timezone.timedelta(hours=360)
-    CART_EXTENSION = timezone.timedelta(hours=12)
     
     class Meta:
         constraints = [
@@ -36,11 +34,6 @@ class Cart(models.Model):
                 name="unique_active_cart_per_user"
             )
         ]
-        
-    def save(self, *args, **kwargs):
-        if not self.expires_at:
-            self.expires_at = timezone.now() + self.CART_TTL
-        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"Cart: {self.id}, Status: {self.status}"
