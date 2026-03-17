@@ -38,6 +38,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_state",
             "shipping_country",
             "items",
+            "item_count",
         ]
         read_only_fields = tuple(fields)
         
@@ -45,7 +46,7 @@ class OrderSerializer(serializers.ModelSerializer):
         return obj.items.count()
         
 
-class CompleteOrderSerializer(serializers.Serializer):
+class PayOrderSerializer(serializers.Serializer):
     payment_method_id = serializers.UUIDField()
     
 
