@@ -174,7 +174,7 @@ class OrderService:
     
     @staticmethod
     @transaction.atomic
-    def complete_order(user, order_id, payment_method):
+    def pay_order(user, order_id, payment_method_id):
         order = (
             Order.objects
             .select_for_update()
@@ -191,15 +191,17 @@ class OrderService:
             raise ValueError("Order cannot be paid")
         
         # Lazy import
-        from payment.models import Payment
+        from payment.models import Payment, PaymentMethod
         
         # Check existing payment
         if Payment.objects.filter(order=order).exists():
             raise ValueError("Payment already initiated for this order")
         
-        # Ensure payment hasn't been created already
-        if not payment_method.is_active:
-            raise ValueError("Payment method inactive")
+        # Fetch payment method
+        payment_method = PaymentMethod.objects.get(
+            id=payment_method_id,
+            is_active = True
+        )
         
         # Lazy import
         from payment.services import PaymentService
