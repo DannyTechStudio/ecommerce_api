@@ -1,7 +1,14 @@
 from django.contrib import admin
-from .models import Payment, PaymentEvent
+from .models import PaymentMethod, Payment, PaymentEvent
 
 # Register your models here.
+@admin.register(PaymentMethod)
+class PaymentMethodAdmin(admin.ModelAdmin):
+    list_display = ("name", "provider", "channel", "code", "is_active", "supports_refund", "created_at")
+    list_filter = ("is_active", "supports_refund")
+    search_fields = ("name", "code")
+
+
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ("reference", "order", "amount", "currency", "status", "created_at")
