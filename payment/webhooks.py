@@ -1,6 +1,7 @@
 import json
 import hmac
 import hashlib
+import logging
 
 from django.conf import settings
 from rest_framework.views import APIView
@@ -8,6 +9,8 @@ from rest_framework.response import Response
 
 from .models import Payment, PaymentEvent
 from .services import PaymentService
+
+logger = logging.getLogger(__name__)
 
 
 class PayStackWebhookView(APIView):
@@ -21,31 +24,30 @@ class PayStackWebhookView(APIView):
         computed_hash = hmac.new(
             settings.PAYSTACK_SECRET_KEY.encode(),
             payload,
-            hashlib.sha3_512
+            hashlib.sha512
         ).hexdigest()
         
         if signature != computed_hash:
             return Response(status=400)
         
         data = json.loads(payload)
-        
         event = data.get("event")
-        
         reference = data.get("data", {}).get("reference")
         
-        payment = None
+        logger.info(f"Webhook event received: {event}")
         
+        payment = None
         if reference:
-            try:
-                payment = Payment.objects.get(reference=reference)
-            except Payment.DoesNotExist:
-                payment = None
+            payment = Payment.objects.filter(reference=reference).first()
                 
         PaymentEvent.objects.create(
             payment = payment,
             event_type = event,
             payload = data
         )
+        
+        if payment and payment.status == "success":
+            return Response(status=200)
         
         if event == "charge.success" and reference:
             PaymentService.verify_payment(reference)
