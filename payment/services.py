@@ -7,12 +7,14 @@ from django.conf import settings
 
 from .models import Payment, PaymentStatus
 from .exceptions import PaymentVerification
+from .providers.paystack import PaystackService
 
 from catalog.models import Product
 from order.models import Order, OrderStatus
 from order.services import OrderService
 from cart.models import Cart, CartStatus
 from cart.services import CartService
+
 
 
 class PaymentService:
@@ -53,10 +55,14 @@ class PaymentService:
             reference=PaymentService.generate_unique_reference(),
             provider_reference="",
             status=PaymentStatus.INITIATED,
-            provider_response={},
         )
         
-        return payment
+        # Provider routing
+        if method.provider == "paystack":
+            return PaystackService.initiate(payment)
+
+        raise ValueError("Unsupported payment provider")
+        
     
 
     @staticmethod
@@ -73,7 +79,7 @@ class PaymentService:
         try:
             # Paystack Verification API Call
             response = requests.get(
-                f"https://api.paystack.co/transaction/verify/{reference}",
+                f"https://api.paystack.co/transaction/verify/{payment.reference}",
                 headers={
                     "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
                 },
