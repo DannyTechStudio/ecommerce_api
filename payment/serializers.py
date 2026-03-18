@@ -5,7 +5,7 @@ from .models import Payment, PaymentMethod, PaymentEvent
 class PaymentMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentMethod
-        fields = ["id", "name", "code"]
+        fields = ["id", "provider", "channel", "name", "code", "is_active", "supports_refund"]
         
         
 class PaymentInitiateSerializer(serializers.ModelSerializer):
