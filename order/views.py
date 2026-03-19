@@ -61,7 +61,7 @@ class PayOrderView(APIView):
         from .services import OrderService
         
         try:
-            payment = OrderService.complete_order(
+            payment = OrderService.pay_order(
                 user=request.user,
                 order_id=order_id,
                 payment_method=payment_method
