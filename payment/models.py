@@ -37,6 +37,14 @@ class PaymentMethod(models.Model):
     supports_refund = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider", "channel"],
+                name="unique_provider_channel"
+            )
+        ]
+    
     def __str__(self):
         return self.name
     
@@ -56,12 +64,6 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["provider", "channel"],
-                name="unique_provider_channel"
-            )
-        ]
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=["reference"]),
