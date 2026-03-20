@@ -59,10 +59,15 @@ class PaymentService:
         
         # Provider routing
         if method.provider == "paystack":
-            return PaystackService.initiate(payment)
+            response = PaystackService.initiate(payment)
+            
+            payment.payment_url = response.get("authorization_url")
+            payment.provider_reference = response.get("reference", "")
+            payment.save(update_fields=["provider_reference"])
+            
+            return payment
 
         raise ValueError("Unsupported payment provider")
-        
     
 
     @staticmethod
