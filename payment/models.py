@@ -57,6 +57,7 @@ class Payment(models.Model):
     currency = models.CharField(max_length=3, default="GHS")
     reference  = models.CharField(max_length=255, unique=True)
     provider_reference = models.CharField(max_length=255, null=True, blank=True)
+    payment_url = models.URLField(blank=True, null=True)
     status = models.CharField(max_length=15, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     provider_response = models.JSONField(default=dict, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True) 
