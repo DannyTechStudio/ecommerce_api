@@ -51,20 +51,13 @@ class PayOrderView(APIView):
         
         payment_method_id = serializer.validated_data["payment_method_id"]
 
-        from payment.models import PaymentMethod
-        
-        payment_method = get_object_or_404(
-            PaymentMethod,
-            id=payment_method_id
-        )
-        
         from .services import OrderService
         
         try:
             payment = OrderService.pay_order(
                 user=request.user,
                 order_id=order_id,
-                payment_method=payment_method
+                payment_method_id=payment_method_id
             )
         except ValueError as e:
             return Response(
