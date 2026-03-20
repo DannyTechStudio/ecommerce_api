@@ -7,7 +7,7 @@ from payment.models import PaymentStatus
 class PaystackService:
     @staticmethod
     def initiate(payment):
-        url = "https//api.paystack.co/transaction/initialize"
+        url = "https://api.paystack.co/transaction/initialize"
         
         payload = {
             "email": payment.order.user.email,
