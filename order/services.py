@@ -209,7 +209,7 @@ class OrderService:
         # Create the payment
         payment = PaymentService.initiate_payment(
             order=order, 
-            payment_method=payment_method
+            method=payment_method
         )
         
         return payment
