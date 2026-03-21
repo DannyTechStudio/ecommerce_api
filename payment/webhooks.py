@@ -3,9 +3,15 @@ import hmac
 import hashlib
 import logging
 
+from django.http import HttpResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework.permissions import AllowAny
+# from rest_framework.authentication import BaseAuthentication
 
 from .models import Payment, PaymentEvent
 from .services import PaymentService
@@ -13,11 +19,18 @@ from .services import PaymentService
 logger = logging.getLogger(__name__)
 
 
-class PayStackWebhookView(APIView):
-    authentication_classes = []
-    permission_classes = []
+# class DisableAuthentication(BaseAuthentication):
+#     def authenticate(self, request):
+#         return None
+
+@method_decorator(csrf_exempt, name="dispatch")
+class PayStackWebhookView(View):
+    # authentication_classes = [DisableAuthentication]
+    # permission_classes = [AllowAny]
     
     def post(self, request):
+        print("Webhook hit view")
+        
         payload = request.body
         signature = request.headers.get("x-paystack-signature")
         
@@ -27,8 +40,9 @@ class PayStackWebhookView(APIView):
             hashlib.sha512
         ).hexdigest()
         
-        if signature != computed_hash:
-            return Response(status=400)
+        if not hmac.compare_digest(signature or "", computed_hash):
+            logger.warning("Invalid webhook signature")
+            return HttpResponse(status=400)
         
         data = json.loads(payload)
         event = data.get("event")
@@ -39,18 +53,24 @@ class PayStackWebhookView(APIView):
         payment = None
         if reference:
             payment = Payment.objects.filter(reference=reference).first()
-                
+            
+        if not payment:
+            logger.warning(f"No payment found for reference: {reference}")
+            
+        # store event
         PaymentEvent.objects.create(
-            payment = payment,
-            event_type = event,
-            payload = data
+            payment=payment,
+            event_type=event,
+            payload=data
         )
         
-        if payment and payment.status == "success":
-            return Response(status=200)
-        
+        # Handle successful payment
         if event == "charge.success" and reference:
-            PaymentService.verify_payment(reference)
+            if payment:
+                PaymentService.verify_payment(reference)
+            else:
+                logger.warning(f"Skipping verification, payment not found: {reference}")
             
-        return Response(status=200)
+        # return Response(status=200)
+        return HttpResponse(status=200)
 
