@@ -91,7 +91,7 @@ class PaymentService:
                 timeout=10
             )
         except requests.RequestException:
-            raise PaymentVerification("Provider verification failed")
+            raise ValueError("Provider verification failed")
         
         response.raise_for_status()
         
@@ -153,21 +153,28 @@ class PaymentService:
          
         cart = Cart.objects.select_for_update().get(id=order.cart_id)
         
-        order_items = order.items.select_for_update().select_related("product")
+        order_items = order.items.select_for_update()
         
         product_ids = [item.product_id for item in order_items]
         products = Product.objects.select_for_update().filter(id__in=product_ids)
         
+        product_map = {str(p.id): p for p in products}
+        
         # Validate stock availability before marking payment as success
         for item in order_items:
-            if item.product.quantity < item.quantity:
+            product = product_map.get(str(item.product_id))
+            
+            if not product:
+                raise ValueError(f"Product not found for item {item.product_name}")
+            
+            if product.quantity < item.quantity:
                 payment.status = PaymentStatus.FAILED
                 payment.save(update_fields=["status"])
-                raise ValueError(f"Insufficient stock for {item.product.name}")
+                raise ValueError(f"Insufficient stock for {item.product_name}")
         
         # Deduct stock
         for item in order_items:
-            product = item.product
+            product = product_map.get(str(item.product_id))
             product.quantity -= item.quantity
             product.save(update_fields=["quantity"]) 
             
