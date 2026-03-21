@@ -194,8 +194,12 @@ class OrderService:
         from payment.models import Payment, PaymentMethod
         
         # Check existing payment
-        if Payment.objects.filter(order=order).exists():
-            raise ValueError("Payment already initiated for this order")
+        existing_payment = Payment.objects.filter(order=order).first()
+        if existing_payment:
+            if existing_payment.payment_url:
+                return existing_payment         # reuse 
+            else:
+                existing_payment.delete()       # cleanup broken one
         
         # Fetch payment method
         payment_method = PaymentMethod.objects.get(
