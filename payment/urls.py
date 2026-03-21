@@ -18,7 +18,7 @@ urlpatterns = [
     path("initiate/", InitiatePaymentView.as_view()),
     path("verify/", VerifyPaymentView.as_view()),
     path("<str:reference>/", PaymentDetailView.as_view()),
-    path("webhook/paystack/", PayStackWebhookView.as_view(), name="paystack-webhook"),
+    path("webhook/", PayStackWebhookView.as_view(), name="webhook"),
 ]
 
 urlpatterns += router.urls
