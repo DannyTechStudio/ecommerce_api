@@ -20,6 +20,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
 
+from payment.webhooks import PayStackWebhookView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,5 +30,6 @@ urlpatterns = [
     path('api/cart/', include('cart.urls')),
     path('api/orders/', include('order.urls')),
     path('api/payment/', include('payment.urls')),
+    path('webhook/', PayStackWebhookView.as_view()),
     path('api/review/', include('review.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
