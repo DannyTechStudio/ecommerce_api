@@ -8,10 +8,6 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.conf import settings
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework.permissions import AllowAny
-# from rest_framework.authentication import BaseAuthentication
 
 from .models import Payment, PaymentEvent
 from .services import PaymentService
@@ -19,17 +15,10 @@ from .services import PaymentService
 logger = logging.getLogger(__name__)
 
 
-# class DisableAuthentication(BaseAuthentication):
-#     def authenticate(self, request):
-#         return None
-
 @method_decorator(csrf_exempt, name="dispatch")
 class PayStackWebhookView(View):
-    # authentication_classes = [DisableAuthentication]
-    # permission_classes = [AllowAny]
-    
     def post(self, request):
-        print("Webhook hit view")
+        logger.info(f"Webhook event: {event} | Ref: {reference}")
         
         payload = request.body
         signature = request.headers.get("x-paystack-signature")
@@ -71,6 +60,5 @@ class PayStackWebhookView(View):
             else:
                 logger.warning(f"Skipping verification, payment not found: {reference}")
             
-        # return Response(status=200)
         return HttpResponse(status=200)
 

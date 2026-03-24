@@ -6,7 +6,6 @@ import requests
 from django.conf import settings
 
 from .models import Payment, PaymentStatus
-from .exceptions import PaymentVerification
 from .providers.paystack import PaystackService
 
 from catalog.models import Product
