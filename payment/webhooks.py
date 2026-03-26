@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 @method_decorator(csrf_exempt, name="dispatch")
 class PayStackWebhookView(View):
     def post(self, request):
-        logger.info(f"Webhook event: {event} | Ref: {reference}")
+        # logger.info(f"Webhook event: {event} | Ref: {reference}")
+        print("webook hit view")
         
         payload = request.body
         signature = request.headers.get("x-paystack-signature")
