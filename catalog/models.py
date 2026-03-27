@@ -35,7 +35,7 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['category__name', 'name']
+        ordering = ['category__name', 'name', '-created_at']
     
     # Ensures 'is_active' is 'False' when quantity is zero
     def save(self, *args, **kwargs):
