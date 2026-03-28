@@ -12,7 +12,7 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ("reference", "order", "amount", "currency", "status", "created_at")
-    list_filter = ("status", "currency")
+    list_filter = ("status", "currency", "created_at")
     search_fields = ("reference", "provider_reference")
     readonly_fields = ("reference", "provider_reference", "provider_response", "created_at", "paid_at")
 
