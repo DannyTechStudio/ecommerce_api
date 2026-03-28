@@ -20,8 +20,8 @@ class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
     rating = models.IntegerField(
         validators=[
-            MinValueValidator(1), 
-            MaxValueValidator(5)
+            MinValueValidator(1, message="Rating must be between 1 and 5"), 
+            MaxValueValidator(5, message="Rating must be between 1 and 5"),
         ]
     )
     comment = models.TextField(blank=True, null=True)
