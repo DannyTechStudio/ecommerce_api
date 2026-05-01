@@ -1,5 +1,4 @@
 from django.db import transaction
-from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser
 
