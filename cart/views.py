@@ -7,9 +7,8 @@ from rest_framework.generics import ListAPIView
 from django.contrib.auth import get_user_model
 
 from accounts.models import Address
-from .models import Cart
+from .models import Cart, CartItem
 from .services import CartService
-from .models import CartItem
 from .serializers import CartSerializer, AddToCartSerializer, UpdateCartItemSerializer, CheckoutResponseSerializer
 
 User = get_user_model()
