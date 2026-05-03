@@ -32,4 +32,5 @@ urlpatterns = [
     path('api/payment/', include('payment.urls')),
     path('webhook/', PayStackWebhookView.as_view()),
     path('api/', include('review.urls')),
+    path('api/wishlist/', include('wishlist.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
